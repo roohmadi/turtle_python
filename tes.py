@@ -4,10 +4,25 @@ import turtle
 import cmath
 import json
 
+import paho.mqtt.client as mqtt
+
 distance_a1_a2 = 4
 meter2pixel = 130 #100
 range_offset = 0.9
 
+data_mqtt = ""
+
+def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+        print("Connected successfully")
+    else:
+        print("Connect returned result code: " + str(rc))
+
+def on_message(client, userdata, msg):
+    #print("Received message: " + msg.topic + " -> " + msg.payload.decode("utf-8"))
+    global data_mqtt
+    data_mqtt = msg.payload.decode("utf-8")
+    
 def screen_init(width=1200, height=800, t=turtle):
     t.setup(width, height)
     t.tracer(False)
@@ -114,7 +129,6 @@ def draw_uwb_tag(x, y, txt, t):
 
 
 def read_data():
-      
     client = mqtt.Client()
     client.on_connect = on_connect
     client.username_pw_set("User", "Password")
@@ -169,10 +183,12 @@ def main():
     t_a1 = turtle.Turtle()
     t_a2 = turtle.Turtle()
     t_a3 = turtle.Turtle()
+    t_a4 = turtle.Turtle()
     turtle_init(t_ui)
     turtle_init(t_a1)
     turtle_init(t_a2)
     turtle_init(t_a3)
+    turtle_init(t_a4)
 
     a1_range = 0.0
     a2_range = 0.0
@@ -181,13 +197,15 @@ def main():
 
     while True:
         node_count = 0
-        nested_dict = {'dict1': {"A": "85",  "R": "2.2"},
-               'dict2': {"A": "84",  "R": "3.2"}}
-        list = [nested_dict["dict1"], nested_dict["dict2"]]  #read_data()
-        
+        nested_dict = {'dict1': {"A": "84",  "R": "2.2"},
+               'dict2': {"A": "85",  "R": "3.2"},
+               'dict3': {"A": "86",  "R": "5.2"},
+               'dict4': {"A": "87",  "R": "4.2"}
+               }
+        list = [nested_dict["dict1"], nested_dict["dict2"],nested_dict["dict3"], nested_dict["dict4"]]  #read_data()
 
         for one in list:
-            if one['A'] == "84":
+            if one["A"] == "84":
                 clean(t_a1)
                 a1_range = uwb_range_offset(float(one["R"]))
                 draw_uwb_anchor(-250, 180, "84(0,0)", a1_range, t_a1)
@@ -200,8 +218,15 @@ def main():
                                 180, "85(" + str(distance_a1_a2)+")", a2_range, t_a2)
                 node_count += 1
 
-        if node_count == 2:
-            if a2_range != 0 and a1_range != 0 :
+            if one["A"] == "86":
+                clean(t_a4)
+                a4_range = uwb_range_offset(float(one["R"]))
+                draw_uwb_anchor(-250 + meter2pixel * distance_a1_a2,
+                                10, "86(" + str(distance_a1_a2)+")", a4_range, t_a4)
+                node_count += 1
+
+        if node_count == 3:
+            if a4_range != 0 and a2_range != 0 and a1_range != 0 :
                 x, y = tag_pos(a2_range, a1_range, distance_a1_a2)
                 print(x, y)
                 clean(t_a3)
